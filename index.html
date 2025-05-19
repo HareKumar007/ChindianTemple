@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chariot GPS Tracker</title>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <style>
+    body { font-family: sans-serif; text-align: center; padding: 20px; }
+    #status { margin-top: 20px; font-weight: bold; color: green; }
+  </style>
+</head>
+<body>
+  <h1>Chariot GPS Tracker</h1>
+  <p>This page will send the chariot's live location to Firebase.</p>
+  <div id="status">Initializing...</div>
+
+  <script>
+    // ✅ Replace with your Firebase config
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      databaseURL: "https://YOUR_PROJECT_ID.firebaseio.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "XXXXXXX",
+      appId: "YOUR_APP_ID"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const chariotId = new URLSearchParams(window.location.search).get("chariot_id") || "demo";
+    const statusEl = document.getElementById("status");
+
+    function updateStatus(msg, isError = false) {
+      statusEl.textContent = msg;
+      statusEl.style.color = isError ? "red" : "green";
+    }
+
+    if (!navigator.geolocation) {
+      updateStatus("Geolocation not supported", true);
+    } else {
+      updateStatus("Requesting location...");
+      navigator.geolocation.watchPosition(
+        (pos) => {
+          const coords = {
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            timestamp: new Date().toISOString()
+          };
+          firebase.database().ref("chariots/" + chariotId).set(coords)
+            .then(() => updateStatus(`Location sent: ${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}`))
+            .catch(err => updateStatus("Error saving to Firebase", true));
+        },
+        (err) => {
+          updateStatus("Location error: " + err.message, true);
+        },
+        { enableHighAccuracy: true }
+      );
+    }
+  </script>
+</body>
+</html>
