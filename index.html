@@ -31,7 +31,7 @@
   const db = firebase.database();
 
   const chariotId = new URLSearchParams(window.location.search).get("chariot_id") || "demo";
-  const info = document.getElementById("info");
+  const info = document.getElementById("status");
 
   function updateStatus(msg, error = false) {
     info.style.color = error ? 'red' : 'black';
