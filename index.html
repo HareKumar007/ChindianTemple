@@ -2,60 +2,72 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Chariot GPS Tracker</title>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <style>
     body { font-family: sans-serif; text-align: center; padding: 20px; }
-    #status { margin-top: 20px; font-weight: bold; color: green; }
+    #status { margin-top: 20px; font-weight: bold; color: green; white-space: pre-wrap; }
   </style>
 </head>
 <body>
   <h1>Chariot GPS Tracker</h1>
-  <p>This page will send the chariot's live location to Firebase.</p>
+  <p>This page sends live location to Firebase.</p>
   <div id="status">Initializing...</div>
 
   <script>
-    // ✅ Replace with your Firebase config
+    // --- Your Firebase config here ---
     const firebaseConfig = {
       apiKey: "AIzaSyDbuu-3QFmlHUEjiJn_ORE-FQJDcej18m0",
       authDomain: "chindian-temple-chariot.firebaseapp.com",
+      databaseURL: "https://chindian-temple-chariot-default-rtdb.asia-southeast1.firebasedatabase.app",
       projectId: "chindian-temple-chariot",
       storageBucket: "chindian-temple-chariot.firebasestorage.app",
       messagingSenderId: "535925685642",
-      appId: "1:535925685642:web:ccc3d1b706181448f31c73",
-      measurementId: "G-7SRFHCB6FC"
-      };
+      appId: "1:535925685642:web:ccc3d1b706181448f31c73"
+    };
 
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
-  const chariotId = new URLSearchParams(window.location.search).get("chariot_id") || "demo";
-  const info = document.getElementById("status");
+    // Get chariot_id from URL query parameter, default to 'demo'
+    const chariotId = new URLSearchParams(window.location.search).get("chariot_id") || "demo";
+    const statusDiv = document.getElementById("status");
 
-  function updateStatus(msg, error = false) {
-    info.style.color = error ? 'red' : 'black';
-    info.innerText = msg;
-  }
+    function updateStatus(message, error = false) {
+      statusDiv.textContent = message;
+      statusDiv.style.color = error ? "red" : "green";
+    }
 
-  // Request GPS access and send location to Firebase
-  if ("geolocation" in navigator) {
-    updateStatus("Requesting location...");
-    navigator.geolocation.watchPosition(
-      (pos) => {
-        const { latitude, longitude } = pos.coords;
-        const timestamp = Date.now();
-        db.ref("chariots/" + chariotId).set({ lat: latitude, lng: longitude, timestamp });
-        updateStatus(`Tracking...\nLat: ${latitude.toFixed(5)}\nLng: ${longitude.toFixed(5)}`);
-      },
-      (err) => {
-        console.error("Geolocation error:", err);
-        updateStatus("Location error: " + err.message, true);
-      },
-      { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 }
-    );
-  } else {
-    updateStatus("Geolocation is not supported by this browser.", true);
-  }
-</script>
+    if ("geolocation" in navigator) {
+      updateStatus("Requesting location permission...");
+      navigator.geolocation.watchPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          const timestamp = Date.now();
+
+          // Write location data to Firebase
+          db.ref("chariots/" + chariotId).set({
+            lat: latitude,
+            lng: longitude,
+            timestamp: timestamp
+          }).then(() => {
+            updateStatus(
+              `Tracking ${chariotId}...\nLatitude: ${latitude.toFixed(5)}\nLongitude: ${longitude.toFixed(5)}\nUpdated at: ${new Date(timestamp).toLocaleTimeString()}`
+            );
+          }).catch((error) => {
+            updateStatus("Failed to write to database: " + error.message, true);
+          });
+        },
+        (error) => {
+          updateStatus("Geolocation error: " + error.message, true);
+        },
+        { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 }
+      );
+    } else {
+      updateStatus("Geolocation is not supported by this browser.", true);
+    }
+  </script>
+</body>
+</html>
