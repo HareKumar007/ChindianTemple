@@ -1,69 +1,102 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chariot Live Location</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chariot Location Viewer</title>
+
+  <!-- Leaflet CSS & JS -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet/dist/leaflet.css"
+  />
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+  <!-- Firebase compat SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
   <style>
     body, html { margin: 0; padding: 0; height: 100%; }
-    #map { height: 100%; width: 100%; }
-    #info { position: absolute; top: 10px; left: 10px; background: white; padding: 8px; border-radius: 6px; z-index: 1000; box-shadow: 0 0 5px rgba(0,0,0,0.3); }
+    #map { height: 100vh; width: 100vw; }
+    #info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 1000;
+      background: white;
+      padding: 8px 12px;
+      border-radius: 6px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.3);
+      font-family: sans-serif;
+      font-size: 14px;
+    }
   </style>
 </head>
 <body>
-  <div id="info">Loading chariot location...</div>
+  <div id="info">Loading location...</div>
   <div id="map"></div>
 
   <script>
-    // ✅ Replace with your Firebase config:
+    // Your Firebase config (replace with your own!)
     const firebaseConfig = {
       apiKey: "AIzaSyDbuu-3QFmlHUEjiJn_ORE-FQJDcej18m0",
       authDomain: "chindian-temple-chariot.firebaseapp.com",
+      databaseURL: "https://chindian-temple-chariot-default-rtdb.asia-southeast1.firebasedatabase.app",
       projectId: "chindian-temple-chariot",
       storageBucket: "chindian-temple-chariot.firebasestorage.app",
       messagingSenderId: "535925685642",
-      appId: "1:535925685642:web:ccc3d1b706181448f31c73",
+      appId: "1:535925685642:web:ccc3d1b706181448f31c73"
     };
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
+    // Get chariot_id from URL, default "demo"
     const chariotId = new URLSearchParams(window.location.search).get("chariot_id") || "demo";
+
     const info = document.getElementById("info");
 
-    const map = L.map('map').setView([5.4, 100.3], 13); // Default view
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors'
+    // Initialize Leaflet map centered on Malaysia as default
+    const map = L.map("map").setView([3.1390, 101.6869], 13);
+
+    // OpenStreetMap tile layer
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "&copy; OpenStreetMap contributors",
     }).addTo(map);
 
-    const marker = L.marker([0, 0]).addTo(map);
+    // Marker for chariot position
+    let marker = L.marker([0, 0]).addTo(map);
 
+    // Update map and info box with new location
     function updateMap(lat, lng, timestamp) {
       marker.setLatLng([lat, lng]);
       map.setView([lat, lng], 15);
-      info.innerHTML = `Chariot ID: <b>${chariotId}</b><br>Latitude: ${lat.toFixed(5)}<br>Longitude: ${lng.toFixed(5)}<br><small>Updated: ${new Date(timestamp).toLocaleTimeString()}</small>`;
+      info.innerHTML = `
+        Chariot ID: <b>${chariotId}</b><br>
+        Latitude: ${lat.toFixed(5)}<br>
+        Longitude: ${lng.toFixed(5)}<br>
+        <small>Updated: ${new Date(timestamp).toLocaleTimeString()}</small>
+      `;
     }
 
     function fetchLocation() {
-      db.ref("chariots/" + chariotId).once("value")
-        .then(snapshot => {
+      db.ref("chariots/" + chariotId)
+        .once("value")
+        .then((snapshot) => {
           const data = snapshot.val();
           if (data && data.lat && data.lng) {
             updateMap(data.lat, data.lng, data.timestamp);
           } else {
-            info.innerHTML = "No location data available.";
+            info.textContent = "No location data available.";
           }
         })
-        .catch(err => {
-          info.innerHTML = "Error fetching location: " + err.message;
+        .catch((err) => {
+          info.textContent = "Error fetching location: " + err.message;
         });
     }
 
-    // Initial and repeated fetch every 15 seconds
+    // Initial fetch + auto refresh every 15 seconds
     fetchLocation();
     setInterval(fetchLocation, 15000);
   </script>
