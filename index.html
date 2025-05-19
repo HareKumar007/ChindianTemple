@@ -25,40 +25,36 @@
       storageBucket: "chindian-temple-chariot.firebasestorage.app",
       messagingSenderId: "535925685642",
       appId: "1:535925685642:web:ccc3d1b706181448f31c73",
-    };
+      };
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
 
-    const chariotId = new URLSearchParams(window.location.search).get("chariot_id") || "demo";
-    const statusEl = document.getElementById("status");
+  const chariotId = new URLSearchParams(window.location.search).get("chariot_id") || "demo";
+  const info = document.getElementById("info");
 
-    function updateStatus(msg, isError = false) {
-      statusEl.textContent = msg;
-      statusEl.style.color = isError ? "red" : "green";
-    }
+  function updateStatus(msg, error = false) {
+    info.style.color = error ? 'red' : 'black';
+    info.innerText = msg;
+  }
 
-    if (!navigator.geolocation) {
-      updateStatus("Geolocation not supported", true);
-    } else {
-      updateStatus("Requesting location...");
-      navigator.geolocation.watchPosition(
-        (pos) => {
-          const coords = {
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
-            timestamp: new Date().toISOString()
-          };
-          firebase.database().ref("chariots/" + chariotId).set(coords)
-            .then(() => updateStatus(`Location sent: ${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}`))
-            .catch(err => updateStatus("Error saving to Firebase", true));
-        },
-        (err) => {
-          updateStatus("Location error: " + err.message, true);
-        },
-        { enableHighAccuracy: true }
-      );
-    }
-  </script>
-</body>
-</html>
+  // Request GPS access and send location to Firebase
+  if ("geolocation" in navigator) {
+    updateStatus("Requesting location...");
+    navigator.geolocation.watchPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        const timestamp = Date.now();
+        db.ref("chariots/" + chariotId).set({ lat: latitude, lng: longitude, timestamp });
+        updateStatus(`Tracking...\nLat: ${latitude.toFixed(5)}\nLng: ${longitude.toFixed(5)}`);
+      },
+      (err) => {
+        console.error("Geolocation error:", err);
+        updateStatus("Location error: " + err.message, true);
+      },
+      { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 }
+    );
+  } else {
+    updateStatus("Geolocation is not supported by this browser.", true);
+  }
+</script>
